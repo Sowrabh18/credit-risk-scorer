@@ -1,0 +1,31 @@
+# Virtual environment
+venv/
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+# MLflow experiment data
+mlruns/
+# Data files - DVC tracks these
+data/**
+!data/**/*.dvc
+!data/**/
+# Model files - DVC tracks these
+models/**
+!models/**/*.dvc
+!models/**/
+# VS Code personal settings
+.vscode/
+# Windows auto-generated file
+Thumbs.db
+# Environment variables file
+.env
+# DVC internal cache
+.dvc/cache
+# Jupyter checkpoint files
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+# AWS key files
+*.pem
+# AWS credentials folder
+.aws/

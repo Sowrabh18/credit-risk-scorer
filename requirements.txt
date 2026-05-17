@@ -1,0 +1,15 @@
+pandas
+numpy
+scikit-learn
+mlflow
+dvc[s3]
+fastapi
+uvicorn
+nltk
+joblib
+pytest
+python-multipart
+shap
+jupyter
+boto3
+imbalanced-learn
