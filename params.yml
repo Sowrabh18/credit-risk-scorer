@@ -1,0 +1,31 @@
+# ─────────────────────────────────────────────────────
+# params.yml
+#
+# All hyperparameters for the credit risk model.
+# Edit this file to change model settings.
+# Never hardcode these values in train.py
+# ─────────────────────────────────────────────────────
+
+# ── Data settings ──────────────────────────────────────
+data:
+  test_size: 0.2
+  random_state: 42
+
+# ── TF-IDF is not used here - text not needed
+# ── Instead we define feature settings
+
+# ── Model hyperparameters ──────────────────────────────
+logistic_regression:
+  C: [0.01, 0.1, 1, 10]
+  max_iter: 1000
+  class_weight: balanced
+
+random_forest:
+  n_estimators: [100, 200]
+  max_depth: [null, 5, 10]
+  class_weight: balanced
+
+# ── Evaluation ─────────────────────────────────────────
+evaluation:
+  primary_metric: f1
+  cv_folds: 5
