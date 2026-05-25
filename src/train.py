@@ -195,7 +195,7 @@ def train_model(X_train, X_test, y_train, y_test,
         # ── Log metrics and params to MLflow ──────────
         mlflow.log_param('best_params', str(best_params))
         mlflow.log_metric('accuracy', acc)
-        mlflow.log_metric('precision", prec)
+        mlflow.log_metric('precision', prec)
         mlflow.log_metric('recall', rec)
         mlflow.log_metric('f1_score', f1)
         mlflow.sklearn.log_model(
