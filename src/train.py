@@ -192,15 +192,109 @@ def train_model(X_train, X_test, y_train, y_test,
         ))
 
         # ── Log everything to MLflow ───────────────────
+        # ── Log metrics and params to MLflow ──────────
         mlflow.log_param('best_params', str(best_params))
         mlflow.log_metric('accuracy', acc)
-        mlflow.log_metric('precision', prec)
+        mlflow.log_metric('precision", prec)
         mlflow.log_metric('recall', rec)
         mlflow.log_metric('f1_score', f1)
         mlflow.sklearn.log_model(
             best_model,
             model_name.lower().replace(' ', '_')
         )
+
+        # ── Run SHAP and log plots to MLflow ──────────
+        # Only run SHAP for the best model — Logistic
+        # Regression. Skip for other models to save time.
+        try:
+            import shap
+            import matplotlib.pyplot as plt
+            import os
+
+            os.makedirs('reports', exist_ok=True)
+
+            # Get transformed test data
+            preprocessor_step = best_model.named_steps['preprocessor']
+            X_test_transformed = preprocessor_step.transform(X_test)
+
+            # Get classifier from pipeline
+            classifier_step = best_model.named_steps['classifier']
+
+            # Only LinearExplainer works for Logistic Regression
+            # Skip SHAP for Random Forest here since we use
+            # TreeExplainer for that — we'll add it later
+            if 'LogisticRegression' in str(type(classifier_step)):
+
+                explainer = shap.LinearExplainer(
+                    classifier_step,
+                    X_test_transformed
+                )
+                shap_values = explainer.shap_values(X_test_transformed)
+
+                # Get feature names
+                ohe = preprocessor_step.named_transformers_['onehot']
+                from src.preprocess import CATEGORICAL_COLUMNS
+                cat_names = ohe.get_feature_names_out(
+                    input_features=CATEGORICAL_COLUMNS
+                ).tolist()
+                from src.train import NUMERIC_COLUMNS
+                feature_names = cat_names + NUMERIC_COLUMNS
+
+                # Bar plot
+                plt.figure(figsize=(10, 6))
+                shap.summary_plot(
+                    shap_values,
+                    X_test_transformed,
+                    feature_names=feature_names,
+                    plot_type='bar',
+                    show=False
+                )
+                plt.title('Feature Importance — Average SHAP Values')
+                plt.tight_layout()
+                plt.savefig('reports/shap_bar_plot.png',
+                            bbox_inches='tight', dpi=150)
+                plt.close()
+
+                # Summary plot
+                plt.figure(figsize=(10, 6))
+                shap.summary_plot(
+                    shap_values,
+                    X_test_transformed,
+                    feature_names=feature_names,
+                    show=False
+                )
+                plt.title('SHAP Summary — Feature Impact Distribution')
+                plt.tight_layout()
+                plt.savefig('reports/shap_summary_plot.png',
+                            bbox_inches='tight', dpi=150)
+                plt.close()
+
+                # Waterfall plot
+                plt.figure(figsize=(10, 6))
+                shap.waterfall_plot(
+                    shap.Explanation(
+                        values=shap_values[0],
+                        base_values=explainer.expected_value,
+                        data=X_test_transformed[0],
+                        feature_names=feature_names
+                    ),
+                    show=False
+                )
+                plt.title('SHAP Waterfall — Single Prediction Explained')
+                plt.tight_layout()
+                plt.savefig('reports/shap_waterfall_plot.png',
+                            bbox_inches='tight', dpi=150)
+                plt.close()
+
+                # Log all three plots to MLflow
+                mlflow.log_artifact('reports/shap_bar_plot.png')
+                mlflow.log_artifact('reports/shap_summary_plot.png')
+                mlflow.log_artifact('reports/shap_waterfall_plot.png')
+
+                print("  SHAP plots logged to MLflow")
+
+        except Exception as e:
+            print(f"  SHAP analysis skipped: {e}")
 
         return {
             'model_name': model_name,
