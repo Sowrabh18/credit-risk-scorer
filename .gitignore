@@ -29,3 +29,5 @@ Thumbs.db
 *.pem
 # AWS credentials folder
 .aws/
+# Generated plots - MLflow handles these
+reports/
