@@ -1,0 +1,22 @@
+# ─────────────────────────────────────────────────────
+# docker-compose.yml
+#
+# Runs the credit risk scorer API in a container.
+# MLflow runs separately on your local machine.
+#
+# Run with:  docker compose up
+# Stop with: docker compose down
+# ─────────────────────────────────────────────────────
+
+services:
+
+  credit-risk-api:
+    build: .
+    container_name: credit-risk-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

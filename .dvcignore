@@ -1,3 +1,36 @@
-# Add patterns of files dvc should ignore, which could improve
-# the performance. Learn more at
-# https://dvc.org/doc/user-guide/dvcignore
+# Virtual environment
+venv/
+
+# Git history
+.git/
+
+# DVC cache
+.dvc/cache
+
+# MLflow experiments
+mlruns/
+
+# Raw and processed data
+data/
+
+# Jupyter notebooks
+notebooks/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# VS Code settings
+.vscode/
+
+# Environment variables
+.env
+
+# AWS key files
+*.pem
+
+# Reports folder
+reports/
+
+# Pytest cache
+.pytest_cache/
