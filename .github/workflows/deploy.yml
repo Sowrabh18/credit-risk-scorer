@@ -1,0 +1,100 @@
+# ─────────────────────────────────────────────────────
+# .github/workflows/deploy.yml
+#
+# CI/CD pipeline for credit risk scorer.
+# Triggers on every push to main branch.
+#
+# Steps:
+# 1. Run tests
+# 2. Copy code to AWS
+# 3. Rebuild and restart Docker on AWS
+# ─────────────────────────────────────────────────────
+
+name: Deploy Credit Risk Scorer
+
+# ── Trigger ────────────────────────────────────────────
+# Run this workflow every time code is pushed to main
+on:
+  push:
+    branches: [main]
+
+# ── Jobs ───────────────────────────────────────────────
+jobs:
+  test-and-deploy:
+    # Fresh Ubuntu machine for every run
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ── Step 1: Get the code ──────────────────────────
+      # Downloads our repository onto the fresh machine
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # ── Step 2: Set up Python ─────────────────────────
+      # Install Python 3.13 — same as our laptop and Docker
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      # ── Step 3: Install libraries ─────────────────────
+      # Install everything needed for tests
+      # We use requirements.txt not requirements-api.txt
+      # because tests need mlflow, dvc and other dev tools
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── Step 4: Configure AWS credentials ─────────────
+      # DVC needs AWS credentials to pull model from S3
+      # Credentials stored securely in GitHub Secrets
+      - name: Configure AWS credentials
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        run: |
+          aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+          aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+          aws configure set default.region $AWS_DEFAULT_REGION
+
+      # ── Step 5: Pull model from S3 via DVC ────────────
+      # Model is stored in S3 not Git
+      # DVC pulls it onto the fresh machine before tests run
+      - name: Pull model from DVC
+        run: dvc pull
+
+      # ── Step 6: Run tests ─────────────────────────────
+      # If any test fails — workflow stops here
+      # Broken code never reaches AWS
+      - name: Run tests
+        run: python -m pytest tests/ -v
+
+      # ── Step 7: Copy code to AWS ──────────────────────
+      # Uses SSH key stored in GitHub Secrets
+      - name: Copy code to AWS
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          AWS_HOST: ${{ secrets.AWS_HOST }}
+        run: |
+          echo "$SSH_PRIVATE_KEY" > key.pem
+          chmod 600 key.pem
+          scp -i key.pem -o StrictHostKeyChecking=no -r \
+            src models main.py Dockerfile \
+            docker-compose.yml requirements-api.txt \
+            params.yml \
+            ubuntu@$AWS_HOST:~/credit-risk-scorer/
+
+      # ── Step 8: Rebuild and restart on AWS ────────────
+      # SSH into server and restart containers with new code
+      - name: Deploy on AWS
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          AWS_HOST: ${{ secrets.AWS_HOST }}
+        run: |
+          echo "$SSH_PRIVATE_KEY" > key.pem
+          chmod 600 key.pem
+          ssh -i key.pem -o StrictHostKeyChecking=no ubuntu@$AWS_HOST \
+            "cd ~/credit-risk-scorer && \
+             docker-compose down && \
+             docker-compose up -d --build"
